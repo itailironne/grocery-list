@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Html5Qrcode } from 'html5-qrcode'
 import emailjs from '@emailjs/browser'
 import './App.css'
 
@@ -246,11 +247,18 @@ export default function App() {
   const [mode, setMode]         = useState('edit')   // 'edit' | 'shopping'
   const [name, setName]         = useState('')
   const [category, setCategory] = useState('produce')
-  const [bulkMode, setBulkMode] = useState(false)
+  const [addMode, setAddMode] = useState('single') // 'single' | 'bulk' | 'barcode'
   const [bulkText, setBulkText] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const [barcodeResult, setBarcodeResult] = useState(null) // { name, category } | 'not_found'
+  const [barcodeSuggestions, setBarcodeSuggestions] = useState([])
+  const [scanning, setScanning] = useState(false)
+  const scannerRef = useRef(null)
   const [wifeEmail, setWifeEmail]   = useState('')
   const [emailStatus, setEmailStatus] = useState(null) // null | 'sending' | 'sent' | 'error'
   const [prices, setPrices] = useState({ shufersal: [], ramiLevi: [], hetziHinam: [] })
+  const [promos, setPromos] = useState({})
 
   useEffect(() => {
     localStorage.setItem('grocery-list', JSON.stringify(products))
@@ -261,7 +269,11 @@ export default function App() {
       fetch('/shufersal_prices.json').then(r => r.json()).catch(() => []),
       fetch('/rami_levi_prices.json').then(r => r.json()).catch(() => []),
       fetch('/hetzi_hinam_prices.json').then(r => r.json()).catch(() => []),
-    ]).then(([shufersal, ramiLevi, hetziHinam]) => setPrices({ shufersal, ramiLevi, hetziHinam }))
+      fetch('/shufersal_promos.json').then(r => r.json()).catch(() => ({})),
+    ]).then(([shufersal, ramiLevi, hetziHinam, shufersalPromos]) => {
+      setPrices({ shufersal, ramiLevi, hetziHinam })
+      setPromos(shufersalPromos)
+    })
   }, [])
 
   // ── Edit mode actions ──────────────────────────────────────────
@@ -372,6 +384,50 @@ export default function App() {
     }
   }
 
+  const lookupBarcode = (code) => {
+    const all = [...prices.shufersal, ...prices.ramiLevi, ...prices.hetziHinam]
+    const found = all.find(i => i.code === code)
+    if (found) {
+      setBarcodeResult({ name: found.name, category: detectCategory(found.name) || 'other' })
+    } else {
+      setBarcodeResult('not_found')
+    }
+  }
+
+  const addBarcodeProduct = () => {
+    if (!barcodeResult || barcodeResult === 'not_found') return
+    setProducts(prev => [...prev, { id: Date.now(), name: barcodeResult.name, category: barcodeResult.category, status: 'pending' }])
+    setBarcodeInput('')
+    setBarcodeResult(null)
+    stopScanner()
+  }
+
+  const stopScanner = () => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {})
+      scannerRef.current = null
+    }
+    setScanning(false)
+  }
+
+  const startScanner = async () => {
+    setScanning(true)
+    setBarcodeResult(null)
+    await new Promise(r => setTimeout(r, 100))
+    const scanner = new Html5Qrcode('barcode-reader')
+    scannerRef.current = scanner
+    scanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 120 } },
+      (code) => {
+        setBarcodeInput(code)
+        lookupBarcode(code)
+        stopScanner()
+      },
+      () => {}
+    ).catch(() => setScanning(false))
+  }
+
   const startShopping = () => {
     resetList()
     setMode('shopping')
@@ -418,47 +474,126 @@ export default function App() {
         {mode === 'edit' && (
           <div className="add-section">
             <div className="add-toggle">
-              <button
-                className={`toggle-btn ${!bulkMode ? 'active' : ''}`}
-                onClick={() => setBulkMode(false)}
-              >+ פריט בודד</button>
-              <button
-                className={`toggle-btn ${bulkMode ? 'active' : ''}`}
-                onClick={() => setBulkMode(true)}
-              >≡ הדבק רשימה</button>
+              <button className={`toggle-btn ${addMode === 'single' ? 'active' : ''}`} onClick={() => { setAddMode('single'); stopScanner() }}>+ Single</button>
+              <button className={`toggle-btn ${addMode === 'bulk'   ? 'active' : ''}`} onClick={() => { setAddMode('bulk');   stopScanner() }}>≡ Paste list</button>
+              <button className={`toggle-btn ${addMode === 'barcode'? 'active' : ''}`} onClick={() => { setAddMode('barcode'); setBarcodeResult(null); setBarcodeInput('') }}>📷 Barcode</button>
             </div>
 
-            {!bulkMode ? (
+            {addMode === 'single' ? (
               <div className="add-form">
-                <input
-                  type="text"
-                  placeholder="שם מוצר..."
-                  value={name}
-                  onChange={e => {
-                    setName(e.target.value)
-                    const detected = detectCategory(e.target.value)
-                    if (detected) setCategory(detected)
-                  }}
-                  onKeyDown={e => e.key === 'Enter' && addProduct()}
-                />
+                <div className="input-wrap">
+                  <input
+                    type="text"
+                    placeholder="Product name..."
+                    value={name}
+                    onChange={e => {
+                      const val = e.target.value
+                      setName(val)
+                      const detected = detectCategory(val)
+                      if (detected) setCategory(detected)
+                      if (val.trim().length >= 2) {
+                        const all = [
+                          ...prices.shufersal.map(i => i.name),
+                          ...prices.ramiLevi.map(i => i.name),
+                          ...prices.hetziHinam.map(i => i.name),
+                        ]
+                        const lower = val.toLowerCase()
+                        const unique = [...new Set(all.filter(n => n.toLowerCase().includes(lower)))]
+                        setSuggestions(unique.slice(0, 6))
+                      } else {
+                        setSuggestions([])
+                      }
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { addProduct(); setSuggestions([]) }
+                      if (e.key === 'Escape') setSuggestions([])
+                    }}
+                    onBlur={() => setTimeout(() => setSuggestions([]), 150)}
+                  />
+                  {suggestions.length > 0 && (
+                    <ul className="suggestions-list">
+                      {suggestions.map((s, i) => (
+                        <li key={i} onMouseDown={() => {
+                          setName(s)
+                          const detected = detectCategory(s)
+                          if (detected) setCategory(detected)
+                          setSuggestions([])
+                        }}>{s}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <select value={category} onChange={e => setCategory(e.target.value)}>
                   {CATEGORIES.map(c => (
                     <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>
                   ))}
                 </select>
-                <button className="add-btn" onClick={addProduct}>הוסף</button>
+                <button className="add-btn" onClick={() => { addProduct(); setSuggestions([]) }}>Add</button>
               </div>
-            ) : (
+            ) : addMode === 'bulk' ? (
               <div className="bulk-form">
                 <textarea
-                  placeholder={"מוצר אחד בכל שורה, לדוגמה:\nמלפפון\nחלב\nלחם\nעגבניות\nשמן זית"}
+                  placeholder={"One product per line, e.g.:\nMilk\nBread\nEggs"}
                   value={bulkText}
                   onChange={e => setBulkText(e.target.value)}
                   rows={5}
                 />
-                <button className="add-btn bulk-add-btn" onClick={addBulk}>
-                  הוסף הכל
-                </button>
+                <button className="add-btn bulk-add-btn" onClick={addBulk}>Add All</button>
+              </div>
+            ) : (
+              <div className="barcode-form">
+                <div className="barcode-input-row">
+                  <div className="input-wrap">
+                    <input
+                      type="text"
+                      placeholder="Type barcode number..."
+                      value={barcodeInput}
+                      onChange={e => {
+                        const val = e.target.value
+                        setBarcodeInput(val)
+                        setBarcodeResult(null)
+                        if (val.trim().length >= 3) {
+                          const all = [...prices.shufersal, ...prices.ramiLevi, ...prices.hetziHinam]
+                          const matches = all.filter(i => i.code.startsWith(val.trim()))
+                          const unique = [...new Map(matches.map(i => [i.code, i])).values()]
+                          setBarcodeSuggestions(unique.slice(0, 6))
+                        } else {
+                          setBarcodeSuggestions([])
+                        }
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { lookupBarcode(barcodeInput.trim()); setBarcodeSuggestions([]) }
+                        if (e.key === 'Escape') setBarcodeSuggestions([])
+                      }}
+                      onBlur={() => setTimeout(() => setBarcodeSuggestions([]), 150)}
+                    />
+                    {barcodeSuggestions.length > 0 && (
+                      <ul className="suggestions-list">
+                        {barcodeSuggestions.map((item, i) => (
+                          <li key={i} onMouseDown={() => {
+                            setBarcodeInput(item.code)
+                            setBarcodeSuggestions([])
+                            lookupBarcode(item.code)
+                          }}>
+                            <span className="suggestion-code">{item.code}</span> — {item.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <button className="add-btn" onClick={() => { lookupBarcode(barcodeInput.trim()); setBarcodeSuggestions([]) }}>Search</button>
+                  <button className="scan-btn" onClick={scanning ? stopScanner : startScanner}>
+                    {scanning ? '⏹ Stop' : '📷 Scan'}
+                  </button>
+                </div>
+                <div id="barcode-reader" style={{ width: '100%', display: scanning ? 'block' : 'none' }} />
+                {barcodeResult === 'not_found' && <p className="barcode-msg error">Product not found for this barcode.</p>}
+                {barcodeResult && barcodeResult !== 'not_found' && (
+                  <div className="barcode-found">
+                    <span className="barcode-found-name">{barcodeResult.name}</span>
+                    <button className="add-btn" onClick={addBarcodeProduct}>+ Add</button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -593,9 +728,43 @@ export default function App() {
                     <div className="product-info">
                       <span className="product-name">{product.name}</span>
                       <div className="product-prices">
-                        {s && <span className={`price-tag shufersal ${s.price === minPrice ? 'cheaper' : ''}`}>🟢 ₪{s.price.toFixed(2)}{s.weighted && <span className="price-unit">/ק"ג</span>}</span>}
-                        {r && <span className={`price-tag rami-levi ${r.price === minPrice ? 'cheaper' : ''}`}>🔴 ₪{r.price.toFixed(2)}{r.weighted && <span className="price-unit">/ק"ג</span>}</span>}
-                        {h && <span className={`price-tag hetzi-hinam ${h.price === minPrice ? 'cheaper' : ''}`}>🟡 ₪{h.price.toFixed(2)}{h.weighted && <span className="price-unit">/ק"ג</span>}</span>}
+                        {s && (() => {
+                          const promo = promos[s.code]
+                          const discountedPrice = promo
+                            ? promo.fixedPrice !== null
+                              ? promo.fixedPrice
+                              : promo.discountPct !== null
+                                ? s.price * (1 - promo.discountPct / 100)
+                                : null
+                            : null
+                          const effectivePrice = discountedPrice ?? s.price
+                          return (
+                            <div className={`price-cell shufersal ${effectivePrice === minPrice ? 'cheaper' : ''}`}>
+                              <span className="price-store-name">🟢 Shufersal</span>
+                              <span className="price-value">
+                                {discountedPrice !== null ? (
+                                  <><span className="price-original">₪{s.price.toFixed(2)}</span> ₪{discountedPrice.toFixed(2)}</>
+                                ) : (
+                                  <>₪{s.price.toFixed(2)}</>
+                                )}
+                                {s.weighted && <span className="price-unit">/kg</span>}
+                              </span>
+                              {promo && <span className="promo-badge">🏷️ {promo.description}</span>}
+                            </div>
+                          )
+                        })()}
+                        {r && (
+                          <div className={`price-cell rami-levi ${r.price === minPrice ? 'cheaper' : ''}`}>
+                            <span className="price-store-name">🔴 Rami Levi</span>
+                            <span className="price-value">₪{r.price.toFixed(2)}{r.weighted && <span className="price-unit">/kg</span>}</span>
+                          </div>
+                        )}
+                        {h && (
+                          <div className={`price-cell hetzi-hinam ${h.price === minPrice ? 'cheaper' : ''}`}>
+                            <span className="price-store-name">🟡 Hetzi Hinam</span>
+                            <span className="price-value">₪{h.price.toFixed(2)}{h.weighted && <span className="price-unit">/kg</span>}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

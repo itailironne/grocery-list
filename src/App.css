@@ -172,6 +172,41 @@ body {
   -webkit-appearance: none;
   appearance: none;
 }
+.input-wrap { flex: 1 1 140px; position: relative; }
+.input-wrap input { width: 100%; }
+
+.suggestions-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  background: #fff;
+  border: 2px solid #43C4F4;
+  border-radius: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem 0;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(67,196,244,0.15);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.suggestions-list li {
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #5f5271;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestions-list li:hover { background: #e0f7fe; color: #1ab3e8; }
+.suggestion-code { font-weight: 800; color: #43C4F4; }
+
 .add-form input { flex: 1 1 140px; }
 .add-form input::placeholder { color: #b0a8c0; }
 .add-form input:focus,
@@ -194,6 +229,64 @@ body {
 .add-btn:active { transform: scale(0.96); }
 
 .bulk-form { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* ── Barcode form ─────────────────────────────────────────── */
+.barcode-form { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.barcode-input-row { display: flex; gap: 0.5rem; }
+.barcode-input-row input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 2px solid #e8f0f8;
+  border-radius: 12px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #5f5271;
+  background: #f7fbff;
+  outline: none;
+}
+.barcode-input-row input:focus { border-color: #43C4F4; background: #fff; }
+
+.scan-btn {
+  padding: 0.6rem 1rem;
+  background: #5f5271;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.scan-btn:hover { background: #43C4F4; }
+
+.barcode-found {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #e6f9f0;
+  border: 2px solid #b8f0d8;
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+}
+.barcode-found-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a9e5c;
+  flex: 1;
+}
+.barcode-msg {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+}
+.barcode-msg.error { color: #d04040; background: #fdecea; }
 .bulk-form textarea {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -314,28 +407,71 @@ body {
 .status-not_found .product-name { text-decoration: line-through; color: #c8b890; }
 
 .product-prices {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.3rem;
-  flex-wrap: wrap;
+  margin-top: 0.25rem;
 }
 
-/* ── Price tags ──────────────────────────────────────────── */
-.price-tag {
-  font-size: 0.72rem;
-  font-weight: 800;
-  border-radius: 7px;
-  padding: 0.12rem 0.45rem;
-  white-space: nowrap;
-  flex-shrink: 0;
+/* ── Price cells ─────────────────────────────────────────── */
+.price-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-radius: 8px;
+  padding: 0.25rem 0.4rem;
+  min-width: 0;
 }
-.price-tag.shufersal   { color: #1a9e5c; background: #e6f9f0; }
-.price-tag.rami-levi   { color: #d04040; background: #fdecea; }
-.price-tag.hetzi-hinam { color: #b07010; background: #fff8e6; }
-.price-tag.cheaper {
-  outline: 2.5px solid #43C4F4;
+.price-cell.shufersal   { background: #e6f9f0; }
+.price-cell.rami-levi   { background: #fdecea; }
+.price-cell.hetzi-hinam { background: #fff8e6; }
+.price-cell.cheaper {
+  outline: 2px solid #43C4F4;
   outline-offset: 1px;
 }
+
+.price-store-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.price-cell.shufersal   .price-store-name { color: #1a9e5c; }
+.price-cell.rami-levi   .price-store-name { color: #d04040; }
+.price-cell.hetzi-hinam .price-store-name { color: #b07010; }
+
+.price-value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #5f5271;
+}
+.price-cell.shufersal   .price-value { color: #1a9e5c; }
+.price-cell.rami-levi   .price-value { color: #d04040; }
+.price-cell.hetzi-hinam .price-value { color: #b07010; }
+
 .price-unit { font-weight: 600; opacity: 0.75; }
+
+.price-original {
+  text-decoration: line-through;
+  opacity: 0.55;
+  font-weight: 600;
+}
+
+.promo-badge {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #1a9e5c;
+  background: #d4f5e5;
+  border-radius: 5px;
+  padding: 0.1rem 0.35rem;
+  white-space: normal;
+  line-height: 1.4;
+}
 
 /* ── Delete button ───────────────────────────────────────── */
 .delete-btn {
