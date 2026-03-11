@@ -334,7 +334,7 @@ export default function App() {
 
   const sendReport = async () => {
     if (!wifeEmail.trim()) { alert('אנא הכנס את כתובת האימייל של אשתך.'); return }
-    if (EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY') { alert('Please configure your EmailJS credentials in App.jsx first.'); return }
+    if (EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY') { alert('אנא הגדר את פרטי EmailJS ב-App.jsx תחילה.'); return }
 
     const date    = new Date().toLocaleString()
     const inBagList    = products.filter(p => p.status === 'in_bag')
@@ -474,9 +474,9 @@ export default function App() {
         {mode === 'edit' && (
           <div className="add-section">
             <div className="add-toggle">
-              <button className={`toggle-btn ${addMode === 'single' ? 'active' : ''}`} onClick={() => { setAddMode('single'); stopScanner() }}>+ Single</button>
-              <button className={`toggle-btn ${addMode === 'bulk'   ? 'active' : ''}`} onClick={() => { setAddMode('bulk');   stopScanner() }}>≡ Paste list</button>
-              <button className={`toggle-btn ${addMode === 'barcode'? 'active' : ''}`} onClick={() => { setAddMode('barcode'); setBarcodeResult(null); setBarcodeInput('') }}>📷 Barcode</button>
+              <button className={`toggle-btn ${addMode === 'single' ? 'active' : ''}`} onClick={() => { setAddMode('single'); stopScanner() }}>+ יחיד</button>
+              <button className={`toggle-btn ${addMode === 'bulk'   ? 'active' : ''}`} onClick={() => { setAddMode('bulk');   stopScanner() }}>≡ הדבק רשימה</button>
+              <button className={`toggle-btn ${addMode === 'barcode'? 'active' : ''}`} onClick={() => { setAddMode('barcode'); setBarcodeResult(null); setBarcodeInput('') }}>📷 ברקוד</button>
             </div>
 
             {addMode === 'single' ? (
@@ -484,7 +484,7 @@ export default function App() {
                 <div className="input-wrap">
                   <input
                     type="text"
-                    placeholder="Product name..."
+                    placeholder="שם מוצר..."
                     value={name}
                     onChange={e => {
                       const val = e.target.value
@@ -528,17 +528,17 @@ export default function App() {
                     <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>
                   ))}
                 </select>
-                <button className="add-btn" onClick={() => { addProduct(); setSuggestions([]) }}>Add</button>
+                <button className="add-btn" onClick={() => { addProduct(); setSuggestions([]) }}>הוסף</button>
               </div>
             ) : addMode === 'bulk' ? (
               <div className="bulk-form">
                 <textarea
-                  placeholder={"One product per line, e.g.:\nMilk\nBread\nEggs"}
+                  placeholder={"מוצר אחד בשורה, לדוגמה:\nחלב\nלחם\nביצים"}
                   value={bulkText}
                   onChange={e => setBulkText(e.target.value)}
                   rows={5}
                 />
-                <button className="add-btn bulk-add-btn" onClick={addBulk}>Add All</button>
+                <button className="add-btn bulk-add-btn" onClick={addBulk}>הוסף הכל</button>
               </div>
             ) : (
               <div className="barcode-form">
@@ -546,7 +546,7 @@ export default function App() {
                   <div className="input-wrap">
                     <input
                       type="text"
-                      placeholder="Type barcode number..."
+                      placeholder="הזן מספר ברקוד..."
                       value={barcodeInput}
                       onChange={e => {
                         const val = e.target.value
@@ -581,17 +581,17 @@ export default function App() {
                       </ul>
                     )}
                   </div>
-                  <button className="add-btn" onClick={() => { lookupBarcode(barcodeInput.trim()); setBarcodeSuggestions([]) }}>Search</button>
+                  <button className="add-btn" onClick={() => { lookupBarcode(barcodeInput.trim()); setBarcodeSuggestions([]) }}>חפש</button>
                   <button className="scan-btn" onClick={scanning ? stopScanner : startScanner}>
-                    {scanning ? '⏹ Stop' : '📷 Scan'}
+                    {scanning ? '⏹ עצור' : '📷 סרוק'}
                   </button>
                 </div>
                 <div id="barcode-reader" style={{ width: '100%', display: scanning ? 'block' : 'none' }} />
-                {barcodeResult === 'not_found' && <p className="barcode-msg error">Product not found for this barcode.</p>}
+                {barcodeResult === 'not_found' && <p className="barcode-msg error">המוצר לא נמצא לברקוד זה.</p>}
                 {barcodeResult && barcodeResult !== 'not_found' && (
                   <div className="barcode-found">
                     <span className="barcode-found-name">{barcodeResult.name}</span>
-                    <button className="add-btn" onClick={addBarcodeProduct}>+ Add</button>
+                    <button className="add-btn" onClick={addBarcodeProduct}>+ הוסף</button>
                   </div>
                 )}
               </div>
@@ -740,14 +740,14 @@ export default function App() {
                           const effectivePrice = discountedPrice ?? s.price
                           return (
                             <div className={`price-cell shufersal ${effectivePrice === minPrice ? 'cheaper' : ''}`}>
-                              <span className="price-store-name">🟢 Shufersal</span>
+                              <span className="price-store-name">🟢 שופרסל</span>
                               <span className="price-value">
                                 {discountedPrice !== null ? (
                                   <><span className="price-original">₪{s.price.toFixed(2)}</span> ₪{discountedPrice.toFixed(2)}</>
                                 ) : (
                                   <>₪{s.price.toFixed(2)}</>
                                 )}
-                                {s.weighted && <span className="price-unit">/kg</span>}
+                                {s.weighted && <span className="price-unit">/ק"ג</span>}
                               </span>
                               {promo && <span className="promo-badge">🏷️ {promo.description}</span>}
                             </div>
@@ -755,14 +755,14 @@ export default function App() {
                         })()}
                         {r && (
                           <div className={`price-cell rami-levi ${r.price === minPrice ? 'cheaper' : ''}`}>
-                            <span className="price-store-name">🔴 Rami Levi</span>
-                            <span className="price-value">₪{r.price.toFixed(2)}{r.weighted && <span className="price-unit">/kg</span>}</span>
+                            <span className="price-store-name">🔴 רמי לוי</span>
+                            <span className="price-value">₪{r.price.toFixed(2)}{r.weighted && <span className="price-unit">/ק"ג</span>}</span>
                           </div>
                         )}
                         {h && (
                           <div className={`price-cell hetzi-hinam ${h.price === minPrice ? 'cheaper' : ''}`}>
-                            <span className="price-store-name">🟡 Hetzi Hinam</span>
-                            <span className="price-value">₪{h.price.toFixed(2)}{h.weighted && <span className="price-unit">/kg</span>}</span>
+                            <span className="price-store-name">🟡 חצי חינם</span>
+                            <span className="price-value">₪{h.price.toFixed(2)}{h.weighted && <span className="price-unit">/ק"ג</span>}</span>
                           </div>
                         )}
                       </div>
@@ -772,7 +772,7 @@ export default function App() {
                       <button
                         className="delete-btn"
                         onClick={() => deleteProduct(product.id)}
-                        title="Remove"
+                        title="הסר"
                       >✕</button>
                     )}
 
@@ -781,12 +781,12 @@ export default function App() {
                         <button
                           className={`bag-btn ${product.status === 'in_bag' ? 'active' : ''}`}
                           onClick={() => setStatus(product.id, product.status === 'in_bag' ? 'pending' : 'in_bag')}
-                          title="In bag"
+                          title="בתיק"
                         >✓</button>
                         <button
                           className={`miss-btn ${product.status === 'not_found' ? 'active' : ''}`}
                           onClick={() => setStatus(product.id, product.status === 'not_found' ? 'pending' : 'not_found')}
-                          title="Not found"
+                          title="לא נמצא"
                         >✕</button>
                       </div>
                     )}
